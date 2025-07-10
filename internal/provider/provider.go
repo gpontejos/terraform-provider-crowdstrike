@@ -15,6 +15,7 @@ import (
 	hostgroups "github.com/crowdstrike/terraform-provider-crowdstrike/internal/host_groups"
 	preventionpolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/prevention_policy"
 	sensorupdatepolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/sensor_update_policy"
+	userrole "github.com/crowdstrike/terraform-provider-crowdstrike/internal/user_role"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
@@ -256,6 +257,7 @@ func (p *CrowdStrikeProvider) DataSources(ctx context.Context) []func() datasour
 	return []func() datasource.DataSource{
 		sensorupdatepolicy.NewSensorUpdateBuildsDataSource,
 		fcs.NewCloudAwsAccountsDataSource,
+		userrole.NewUserRoleAssignmentDataSource,
 	}
 }
 
