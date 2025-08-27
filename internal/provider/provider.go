@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/crowdstrike/gofalcon/falcon"
+	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/cloud_policies"
 	contentupdatepolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/content_update_policy"
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/fcs"
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/fim"
@@ -254,6 +255,7 @@ func (p *CrowdStrikeProvider) Resources(ctx context.Context) []func() resource.R
 		contentupdatepolicy.NewContentPolicyResource,
 		contentupdatepolicy.NewDefaultContentUpdatePolicyResource,
 		sensorvisibilityexclusion.NewSensorVisibilityExclusionResource,
+		cloud_policies.NewPolicyRuleResource,
 	}
 }
 
