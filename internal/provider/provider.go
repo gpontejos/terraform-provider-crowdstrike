@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/crowdstrike/gofalcon/falcon"
+	cloudcompliance "github.com/crowdstrike/terraform-provider-crowdstrike/internal/cloud_compliance"
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/cloud_posture"
 	contentupdatepolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/content_update_policy"
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/fcs"
@@ -264,6 +265,7 @@ func (p *CrowdStrikeProvider) DataSources(ctx context.Context) []func() datasour
 		fcs.NewCloudAwsAccountsDataSource,
 		contentupdatepolicy.NewContentCategoryVersionsDataSource,
 		cloud_posture.NewCloudPostureRulesDataSource,
+		cloudcompliance.NewCloudComplianceFrameworkControlDataSource,
 	}
 }
 
