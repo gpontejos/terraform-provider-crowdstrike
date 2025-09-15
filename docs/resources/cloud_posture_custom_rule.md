@@ -121,7 +121,6 @@ EOF
 
 - `alert_info` (List of String) A list of the alert logic and detection criteria for rule violations. Parent value will be used when parent_rule_id is defined.
 - `attack_types` (Set of String) Specific attack types associated with the rule. Note: If 'parent_rule_id' is specified, these attack types will be inherited from the parent rule, and any values provided here will be ignored.
-- `auto_remediable` (Boolean) Indicates whether auto remediation is enabled for the rule. Currently, auto remediation is not supported, so this defaults to False.
 - `controls` (Attributes Set) Security framework and compliance rule information. (see [below for nested schema](#nestedatt--controls))
 - `logic` (String) Rego logic for the rule. If this is not defined, then parent_rule_id must be defined.
 - `parent_rule_id` (String) UUID of the parent rule to inherit properties from. Required if logic is not specified.

@@ -229,7 +229,7 @@ func (r *cloudPostureRulesDataSource) Schema(
 						"resource_type": schema.StringAttribute{
 							Optional:    true,
 							Computed:    true,
-							Description: "The full resource type. Format examples: AWS: AWS::IAM::CredentialReport, Azure: Microsoft.Compute/virtualMachines, GCP: container.googleapis.com/Cluster, OCI: OCI::IAM::User",
+							Description: "The full resource type. Format examples: AWS: AWS::IAM::CredentialReport, Azure: Microsoft.Compute/virtualMachines, GCP: container.googleapis.com/Cluster",
 						},
 						"severity": schema.Int32Attribute{
 							Optional:    true,

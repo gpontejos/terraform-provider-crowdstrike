@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -55,11 +54,11 @@ type cloudPostureCustomRuleResource struct {
 }
 
 type cloudPostureCustomRuleResourceModel struct {
-	UUID            types.String `tfsdk:"uuid"`
-	AlertInfo       types.List   `tfsdk:"alert_info"`
-	Controls        types.Set    `tfsdk:"controls"`
-	Description     types.String `tfsdk:"description"`
-	AutoRemediable  types.Bool   `tfsdk:"auto_remediable"`
+	UUID        types.String `tfsdk:"uuid"`
+	AlertInfo   types.List   `tfsdk:"alert_info"`
+	Controls    types.Set    `tfsdk:"controls"`
+	Description types.String `tfsdk:"description"`
+	// AutoRemediable  types.Bool   `tfsdk:"auto_remediable"`
 	Domain          types.String `tfsdk:"domain"`
 	Logic           types.String `tfsdk:"logic"`
 	Name            types.String `tfsdk:"name"`
@@ -170,12 +169,12 @@ func (r *cloudPostureCustomRuleResource) Schema(
 				Required:    true,
 				Description: "Description of the policy rule.",
 			},
-			"auto_remediable": schema.BoolAttribute{
-				Optional:    true,
-				Description: "Indicates whether auto remediation is enabled for the rule. Currently, auto remediation is not supported, so this defaults to False.",
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
+			// "auto_remediable": schema.BoolAttribute{
+			// 	Optional:    true,
+			// 	Description: "Indicates whether auto remediation is enabled for the rule. Currently, auto remediation is not supported, so this defaults to False.",
+			// 	Computed:    true,
+			// 	Default:     booldefault.StaticBool(false),
+			// },
 			"domain": schema.StringAttribute{
 				Computed:    true,
 				Default:     stringdefault.StaticString("CSPM"),
@@ -300,16 +299,25 @@ func (r *cloudPostureCustomRuleResource) Create(
 	plan.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
 
 	plan.UUID = types.StringValue(*rule.UUID)
-	plan.Description = types.StringValue(*rule.Description)
-	plan.AutoRemediable = types.BoolValue(*rule.AutoRemediable)
-	plan.Domain = types.StringValue(*rule.Domain)
 	plan.Name = types.StringValue(*rule.Name)
+	plan.Description = types.StringValue(*rule.Description)
+	plan.Domain = types.StringValue(*rule.Domain)
+	plan.Subdomain = types.StringValue(*rule.Subdomain)
 	plan.CloudPlatform = types.StringValue(*rule.RuleLogicList[0].Platform)
 	plan.CloudProvider = types.StringValue(*rule.Provider)
-	plan.RemediationInfo = types.StringValue(*rule.Remediation)
 	plan.ResourceType = types.StringValue(*rule.ResourceTypes[0].ResourceType)
-	plan.Severity = types.Int32Value(int32(*rule.Severity))
-	plan.Subdomain = types.StringValue(*rule.Subdomain)
+
+	// if rule.AutoRemediable != nil {
+	// 	plan.AutoRemediable = types.BoolValue(*rule.AutoRemediable)
+	// }
+
+	if rule.Remediation != nil {
+		plan.RemediationInfo = types.StringValue(*rule.Remediation)
+	}
+
+	if rule.Severity != nil {
+		plan.Severity = types.Int32Value(int32(*rule.Severity))
+	}
 
 	if !plan.ParentRuleId.IsNull() {
 		plan.ParentRuleId = types.StringValue(rule.ParentRuleShortUUID)
@@ -372,16 +380,25 @@ func (r *cloudPostureCustomRuleResource) Read(
 	}
 
 	state.UUID = types.StringValue(*rule.UUID)
-	state.Description = types.StringValue(*rule.Description)
-	state.AutoRemediable = types.BoolValue(*rule.AutoRemediable)
-	state.Domain = types.StringValue(*rule.Domain)
 	state.Name = types.StringValue(*rule.Name)
+	state.Description = types.StringValue(*rule.Description)
+	state.Domain = types.StringValue(*rule.Domain)
+	state.Subdomain = types.StringValue(*rule.Subdomain)
 	state.CloudPlatform = types.StringValue(*rule.RuleLogicList[0].Platform)
 	state.CloudProvider = types.StringValue(*rule.Provider)
-	state.RemediationInfo = types.StringValue(*rule.Remediation)
 	state.ResourceType = types.StringValue(*rule.ResourceTypes[0].ResourceType)
-	state.Severity = types.Int32Value(int32(*rule.Severity))
-	state.Subdomain = types.StringValue(*rule.Subdomain)
+
+	if rule.Severity != nil {
+		state.Severity = types.Int32Value(int32(*rule.Severity))
+	}
+
+	if rule.Remediation != nil {
+		state.RemediationInfo = types.StringValue(*rule.Remediation)
+	}
+
+	// if rule.AutoRemediable != nil {
+	// 	state.AutoRemediable = types.BoolValue(*rule.AutoRemediable)
+	// }
 
 	if !state.ParentRuleId.IsNull() {
 		state.ParentRuleId = types.StringValue(rule.ParentRuleShortUUID)
@@ -436,8 +453,8 @@ func (r *cloudPostureCustomRuleResource) Update(
 	}
 
 	plan.UUID = types.StringValue(*rule.UUID)
-	plan.Description = types.StringValue(*rule.Description)
 	plan.Name = types.StringValue(*rule.Name)
+	plan.Description = types.StringValue(*rule.Description)
 	plan.CloudPlatform = types.StringValue(*rule.RuleLogicList[0].Platform)
 	plan.CloudProvider = types.StringValue(*rule.Provider)
 	plan.RemediationInfo = types.StringValue(*rule.Remediation)
@@ -611,7 +628,7 @@ func (r *cloudPostureCustomRuleResource) createCloudPolicyRule(ctx context.Conte
 		}
 
 		body.Logic = plan.Logic.ValueStringPointer()
-		body.AutoRemediable = plan.AutoRemediable.ValueBoolPointer()
+		// body.AutoRemediable = plan.AutoRemediable.ValueBoolPointer()
 	} else {
 		body.ParentRuleID = plan.ParentRuleId.ValueStringPointer()
 	}

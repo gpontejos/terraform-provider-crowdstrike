@@ -74,7 +74,7 @@ Optional:
 - `name` (String) Name of the policy rule.
 - `parent_rule_id` (String) UUID of the parent rule to inherit properties from. Required if logic is not specified.
 - `remediation_info` (String) Information about how to remediate issues detected by this rule.
-- `resource_type` (String) The full resource type. Format examples: AWS: AWS::IAM::CredentialReport, Azure: Microsoft.Compute/virtualMachines, GCP: container.googleapis.com/Cluster, OCI: OCI::IAM::User
+- `resource_type` (String) The full resource type. Format examples: AWS: AWS::IAM::CredentialReport, Azure: Microsoft.Compute/virtualMachines, GCP: container.googleapis.com/Cluster
 - `severity` (Number) Severity of the rule. Valid values are 0 (critical), 1 (high), 2 (medium), 3 (informational).
 - `subdomain` (String) Subdomain for the policy rule. Valid values are 'IOM' (Indicators of Misconfiguration) or 'IAC' (Infrastructure as Code). IOM is only supported at this time.
 
