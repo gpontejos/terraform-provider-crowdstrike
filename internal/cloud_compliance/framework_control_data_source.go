@@ -294,13 +294,13 @@ func (r *cloudComplianceFrameworkControlDataSource) getControls(
 
 	for _, control := range controlsInfo {
 		controls = append(controls, cloudComplianceFrameworkControlModel{
-			Authority:   types.StringValue(*control.Authority),
-			Code:        types.StringValue(*control.Code),
+			Authority:   types.StringPointerValue(control.Authority),
+			Code:        types.StringPointerValue(control.Code),
 			Requirement: types.StringValue(control.Requirement),
-			Benchmark:   types.StringValue(*control.SecurityFramework[0].Name),
-			Name:        types.StringValue(*control.Name),
+			Benchmark:   types.StringPointerValue(control.SecurityFramework[0].Name),
+			Name:        types.StringPointerValue(control.Name),
 			Section:     types.StringValue(control.SectionName),
-			UUID:        types.StringValue(*control.UUID),
+			UUID:        types.StringPointerValue(control.UUID),
 		})
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -57,6 +58,7 @@ type cloudPostureRulesDataSourceRuleModel struct {
 	ResourceType    types.String `tfsdk:"resource_type"`
 	Severity        types.Int32  `tfsdk:"severity"`
 	Subdomain       types.String `tfsdk:"subdomain"`
+	AttackTypes     types.Set    `tfsdk:"attack_types"`
 }
 
 func (r *cloudPostureRulesDataSource) Configure(
@@ -221,6 +223,12 @@ func (r *cloudPostureRulesDataSource) Schema(
 								),
 							},
 						},
+						"attack_types": schema.SetAttribute{
+							Optional:    true,
+							Computed:    true,
+							Description: "Specific attack types associated with the rule.",
+							ElementType: types.StringType,
+						},
 						"remediation_info": schema.StringAttribute{
 							Optional:    true,
 							Computed:    true,
@@ -377,18 +385,23 @@ func (r *cloudPostureRulesDataSource) getRules(ctx context.Context, cloudProvide
 		rule := cloudPostureRulesDataSourceRuleModel{
 			UUID:            types.StringValue(*resource.UUID),
 			AlertInfo:       alertInfo,
-			Description:     types.StringValue(*resource.Description),
-			AutoRemediable:  types.BoolValue(*resource.AutoRemediable),
-			Domain:          types.StringValue(*resource.Domain),
+			Description:     types.StringPointerValue(resource.Description),
+			AutoRemediable:  types.BoolPointerValue(resource.AutoRemediable),
+			Domain:          types.StringPointerValue(resource.Domain),
 			Logic:           types.StringValue(resource.Logic),
-			Name:            types.StringValue(*resource.Name),
+			Name:            types.StringPointerValue(resource.Name),
 			ParentRuleID:    types.StringValue(resource.ParentRuleShortUUID),
 			CloudPlatform:   types.StringValue(resource.Platform),
-			CloudProvider:   types.StringValue(*resource.Provider),
-			RemediationInfo: types.StringValue(*resource.RuleLogicList[0].RemediationInfo),
-			ResourceType:    types.StringValue(*resource.ResourceTypes[0].ResourceType),
-			Severity:        types.Int32Value(int32(*resource.Severity)),
-			Subdomain:       types.StringValue(*resource.Subdomain),
+			CloudProvider:   types.StringPointerValue(resource.Provider),
+			RemediationInfo: types.StringPointerValue(resource.RuleLogicList[0].RemediationInfo),
+			ResourceType:    types.StringPointerValue(resource.ResourceTypes[0].ResourceType),
+			Severity: func() types.Int32 {
+				if resource.Severity != nil {
+					return types.Int32Value(int32(*resource.Severity))
+				}
+				return types.Int32Null()
+			}(),
+			Subdomain: types.StringPointerValue(resource.Subdomain),
 		}
 
 		for _, control := range resource.Controls {
@@ -396,9 +409,17 @@ func (r *cloudPostureRulesDataSource) getRules(ctx context.Context, cloudProvide
 				Authority types.String `tfsdk:"authority"`
 				Code      types.String `tfsdk:"code"`
 			}{
-				Authority: types.StringValue(*control.Authority),
-				Code:      types.StringValue(*control.Code),
+				Authority: types.StringPointerValue(control.Authority),
+				Code:      types.StringPointerValue(control.Code),
 			})
+		}
+
+		rule.AttackTypes = types.SetValueMust(types.StringType, []attr.Value{})
+		for _, attackType := range resource.AttackTypes {
+			rule.AttackTypes, diags = types.SetValue(types.StringType, append(rule.AttackTypes.Elements(), types.StringValue(attackType)))
+			if diags.HasError() {
+				return nil, diags
+			}
 		}
 
 		rules = append(rules, rule)
