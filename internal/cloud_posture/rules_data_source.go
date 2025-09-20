@@ -377,10 +377,7 @@ func (r *cloudPostureRulesDataSource) getRules(ctx context.Context, cloudProvide
 	}
 
 	for _, resource := range getRulesPayload.Resources {
-		alertInfo := unmarshallAlertInfoToTerraformState(*resource.AlertInfo)
-		if diags.HasError() {
-			return nil, diags
-		}
+		alertInfo := convertAlertRemediationInfoToTerraformState(resource.AlertInfo)
 
 		rule := cloudPostureRulesDataSourceRuleModel{
 			UUID:            types.StringValue(*resource.UUID),

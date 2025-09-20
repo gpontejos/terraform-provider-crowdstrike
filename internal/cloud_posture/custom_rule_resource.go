@@ -2,7 +2,6 @@ package cloud_posture
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -64,7 +63,7 @@ type cloudPostureCustomRuleResourceModel struct {
 	ParentRuleId    types.String `tfsdk:"parent_rule_id"`
 	CloudPlatform   types.String `tfsdk:"cloud_platform"`
 	CloudProvider   types.String `tfsdk:"cloud_provider"`
-	RemediationInfo types.String `tfsdk:"remediation_info"`
+	RemediationInfo types.List   `tfsdk:"remediation_info"`
 	ResourceType    types.String `tfsdk:"resource_type"`
 	Severity        types.Int32  `tfsdk:"severity"`
 	Subdomain       types.String `tfsdk:"subdomain"`
@@ -136,7 +135,7 @@ func (r *cloudPostureCustomRuleResource) Schema(
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "A list of the alert logic and detection criteria for rule violations. Parent value will be used when parent_rule_id is defined.",
-				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
+				// Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
 			},
 			"controls": schema.SetNestedAttribute{
 				Optional:    true,
@@ -229,14 +228,12 @@ func (r *cloudPostureCustomRuleResource) Schema(
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"remediation_info": schema.StringAttribute{
+			"remediation_info": schema.ListAttribute{
 				Optional:    true,
 				Computed:    true,
+				ElementType: types.StringType,
 				Description: "Information about how to remediate issues detected by this rule.",
-				Default:     stringdefault.StaticString(""),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{types.StringValue("")})),
 			},
 			"resource_type": schema.StringAttribute{
 				Required:    true,
@@ -285,11 +282,7 @@ func (r *cloudPostureCustomRuleResource) Create(
 		return
 	}
 
-	if rule.AlertInfo != nil {
-		plan.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
-	} else {
-		plan.AlertInfo = types.ListNull(types.StringType)
-	}
+	plan.AlertInfo = convertAlertRemediationInfoToTerraformState(rule.AlertInfo)
 
 	plan.UUID = types.StringPointerValue(rule.UUID)
 	plan.Name = types.StringPointerValue(rule.Name)
@@ -299,10 +292,8 @@ func (r *cloudPostureCustomRuleResource) Create(
 	plan.CloudPlatform = types.StringPointerValue(rule.RuleLogicList[0].Platform)
 	plan.CloudProvider = types.StringPointerValue(rule.Provider)
 	plan.ResourceType = types.StringPointerValue(rule.ResourceTypes[0].ResourceType)
-	plan.RemediationInfo = types.StringPointerValue(rule.Remediation)
-	// if rule.Remediation != nil {
-	// 	plan.RemediationInfo = types.StringValue(*rule.Remediation)
-	// }
+
+	plan.RemediationInfo = convertAlertRemediationInfoToTerraformState(rule.Remediation)
 
 	if rule.Severity != nil {
 		plan.Severity = types.Int32Value(int32(*rule.Severity))
@@ -361,13 +352,7 @@ func (r *cloudPostureCustomRuleResource) Read(
 		return
 	}
 
-	// state.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
-
-	if rule.AlertInfo != nil {
-		state.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
-	} else {
-		state.AlertInfo = types.ListNull(types.StringType)
-	}
+	state.AlertInfo = convertAlertRemediationInfoToTerraformState(rule.AlertInfo)
 
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
@@ -382,15 +367,12 @@ func (r *cloudPostureCustomRuleResource) Read(
 	state.CloudPlatform = types.StringPointerValue(rule.RuleLogicList[0].Platform)
 	state.CloudProvider = types.StringPointerValue(rule.Provider)
 	state.ResourceType = types.StringPointerValue(rule.ResourceTypes[0].ResourceType)
-	state.RemediationInfo = types.StringPointerValue(rule.Remediation)
+
+	state.RemediationInfo = convertAlertRemediationInfoToTerraformState(rule.Remediation)
 
 	if rule.Severity != nil {
 		state.Severity = types.Int32Value(int32(*rule.Severity))
 	}
-
-	// if rule.Remediation != nil {
-	// 	state.RemediationInfo = types.StringPointerValue(rule.Remediation)
-	// }
 
 	if !state.ParentRuleId.IsNull() {
 		state.ParentRuleId = types.StringValue(rule.ParentRuleShortUUID)
@@ -437,11 +419,11 @@ func (r *cloudPostureCustomRuleResource) Update(
 
 	// plan.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
 
-	if rule.AlertInfo != nil {
-		plan.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
-	} else {
-		plan.AlertInfo = types.ListNull(types.StringType)
-	}
+	// if rule.AlertInfo != nil {
+	plan.AlertInfo = convertAlertRemediationInfoToTerraformState(rule.AlertInfo)
+	// } else {
+	// 	plan.AlertInfo = types.ListNull(types.StringType)
+	// }
 
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
@@ -453,7 +435,11 @@ func (r *cloudPostureCustomRuleResource) Update(
 	plan.Description = types.StringPointerValue(rule.Description)
 	plan.CloudPlatform = types.StringPointerValue(rule.RuleLogicList[0].Platform)
 	plan.CloudProvider = types.StringPointerValue(rule.Provider)
-	plan.RemediationInfo = types.StringPointerValue(rule.Remediation)
+
+	// if rule.Remediation != nil {
+	plan.RemediationInfo = convertAlertRemediationInfoToTerraformState(rule.Remediation)
+	// }
+
 	// plan.Severity = types.Int32Value(int32(*rule.Severity))
 
 	if rule.Severity != nil {
@@ -542,12 +528,50 @@ func (r *cloudPostureCustomRuleResource) ValidateConfig(
 		)
 	}
 
-	// if !config.ParentRuleId.IsNull() && !config.AttackTypes.IsNull() {
-	// 	resp.Diagnostics.AddError(
-	// 		"Invalid Configuration",
-	// 		"When 'parent_rule_id' is defined, 'attack_types' should not be specified as they will be inherited from the parent rule",
-	// 	)
-	// }
+	if !config.ParentRuleId.IsNull() && !config.AttackTypes.IsNull() {
+		resp.Diagnostics.AddError(
+			"Invalid Configuration",
+			"When 'parent_rule_id' is defined, 'attack_types' should not be specified as they will be inherited from the parent rule",
+		)
+	}
+
+	if !config.AlertInfo.IsNull() {
+		var alertInfoElements []basetypes.StringValue
+		diags := config.AlertInfo.ElementsAs(ctx, &alertInfoElements, false)
+		if diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+
+		for _, element := range alertInfoElements {
+			if element.ValueString() == "" {
+				resp.Diagnostics.AddError(
+					"Invalid Configuration",
+					"AlertInfo cannot contain empty strings",
+				)
+				return
+			}
+		}
+	}
+
+	if !config.RemediationInfo.IsNull() {
+		var RemediationInfoElements []basetypes.StringValue
+		diags := config.RemediationInfo.ElementsAs(ctx, &RemediationInfoElements, false)
+		if diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+
+		for _, element := range RemediationInfoElements {
+			if element.ValueString() == "" {
+				resp.Diagnostics.AddError(
+					"Invalid Configuration",
+					"RemediationInfo cannot contain empty strings",
+				)
+				return
+			}
+		}
+	}
 }
 
 func (r *cloudPostureCustomRuleResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
@@ -567,18 +591,17 @@ func (r *cloudPostureCustomRuleResource) ModifyPlan(ctx context.Context, req res
 		return
 	}
 
-	if !plan.ParentRuleId.IsNull() {
+	if !plan.ParentRuleId.IsNull() && !plan.ParentRuleId.IsUnknown() {
 		parentRule, diags := r.getCloudPolicyRule(ctx, plan.ParentRuleId.ValueString())
 		if diags.HasError() {
 			resp.Diagnostics.Append(diags...)
 		}
 
-		// Use parent remediation info if not assigned by user
-		if plan.RemediationInfo.ValueString() == "" {
-			plan.RemediationInfo = types.StringPointerValue(parentRule.Remediation)
+		if len(plan.RemediationInfo.Elements()) == 0 {
+			plan.RemediationInfo = convertAlertRemediationInfoToTerraformState(parentRule.Remediation)
 		}
 
-		if config.AttackTypes.IsNull() && len(parentRule.AttackTypes) > 0 {
+		if len(parentRule.AttackTypes) > 0 {
 			// if len(parentRule.AttackTypes) > 0 {
 			plan.AttackTypes = types.SetValueMust(types.StringType, []attr.Value{})
 			for _, attackType := range parentRule.AttackTypes {
@@ -591,19 +614,7 @@ func (r *cloudPostureCustomRuleResource) ModifyPlan(ctx context.Context, req res
 		}
 
 		if config.AlertInfo.IsNull() {
-			// parentAlertInfo := unmarshallAlertInfoToTerraformState(*parentRule.AlertInfo)
-			var parentAlertInfo basetypes.ListValue
-			if parentRule.AlertInfo != nil {
-				parentAlertInfo = unmarshallAlertInfoToTerraformState(*parentRule.AlertInfo)
-			} else {
-				plan.AlertInfo = types.ListNull(types.StringType)
-			}
-
-			if diags.HasError() {
-				resp.Diagnostics.Append(diags...)
-				return
-			}
-			plan.AlertInfo = parentAlertInfo
+			plan.AlertInfo = convertAlertRemediationInfoToTerraformState(parentRule.AlertInfo)
 		}
 	}
 
@@ -614,15 +625,15 @@ func (r *cloudPostureCustomRuleResource) createCloudPolicyRule(ctx context.Conte
 	var diags diag.Diagnostics
 
 	body := &models.CommonCreateRuleRequest{
-		Description:     plan.Description.ValueStringPointer(),
-		Name:            plan.Name.ValueStringPointer(),
-		Platform:        plan.CloudPlatform.ValueStringPointer(),
-		Provider:        plan.CloudProvider.ValueStringPointer(),
-		ResourceType:    plan.ResourceType.ValueStringPointer(),
-		Domain:          plan.Domain.ValueStringPointer(),
-		Subdomain:       plan.Subdomain.ValueStringPointer(),
-		RemediationInfo: plan.RemediationInfo.ValueStringPointer(),
-		Severity:        plan.Severity.ValueInt32Pointer(),
+		Description:  plan.Description.ValueStringPointer(),
+		Name:         plan.Name.ValueStringPointer(),
+		Platform:     plan.CloudPlatform.ValueStringPointer(),
+		Provider:     plan.CloudProvider.ValueStringPointer(),
+		ResourceType: plan.ResourceType.ValueStringPointer(),
+		Domain:       plan.Domain.ValueStringPointer(),
+		Subdomain:    plan.Subdomain.ValueStringPointer(),
+		// RemediationInfo: plan.RemediationInfo.ValueStringPointer(),
+		Severity: plan.Severity.ValueInt32Pointer(),
 	}
 
 	if plan.ParentRuleId.IsNull() {
@@ -640,8 +651,27 @@ func (r *cloudPostureCustomRuleResource) createCloudPolicyRule(ctx context.Conte
 		}
 
 		body.Logic = plan.Logic.ValueStringPointer()
+		body.AlertInfo, diags = convertAlertInfoToAPIFormat(ctx, plan.AlertInfo, false)
+		if diags.HasError() {
+			return nil, diags
+		}
+
+		body.RemediationInfo, diags = convertRemediationInfoToAPIFormat(ctx, plan.RemediationInfo, false)
+		if diags.HasError() {
+			return nil, diags
+		}
+
 	} else {
 		body.ParentRuleID = plan.ParentRuleId.ValueStringPointer()
+		body.AlertInfo, diags = convertAlertInfoToAPIFormat(ctx, plan.AlertInfo, true)
+		if diags.HasError() {
+			return nil, diags
+		}
+
+		body.RemediationInfo, diags = convertRemediationInfoToAPIFormat(ctx, plan.RemediationInfo, true)
+		if diags.HasError() {
+			return nil, diags
+		}
 	}
 
 	attackTypes := make([]string, 0, len(plan.AttackTypes.Elements()))
@@ -650,22 +680,8 @@ func (r *cloudPostureCustomRuleResource) createCloudPolicyRule(ctx context.Conte
 			attackTypes = append(attackTypes, str.ValueString())
 		}
 	}
+
 	body.AttackTypes = utils.Addr(strings.Join(attackTypes, ","))
-
-	// if strType, ok := plan.AttackTypes.Elements()[0].(types.String); ok {
-	// 	body.AttackTypes = strType.ValueStringPointer()
-	// } else {
-	// 	diags.AddError(
-	// 		"Invalid Attack Type",
-	// 		"Attack type must be a string value",
-	// 	)
-	// 	return nil, diags
-	// }
-
-	body.AlertInfo, diags = convertAlertInfoToAPIFormat(plan.AlertInfo)
-	if diags.HasError() {
-		return nil, diags
-	}
 
 	params := cloud_policies.CreateRuleParams{
 		Context: ctx,
@@ -798,8 +814,49 @@ func (r *cloudPostureCustomRuleResource) updateCloudPolicyRule(ctx context.Conte
 
 	body.RuleLogicList = []*models.ApimodelsRuleLogic{
 		{
+			Platform: plan.CloudPlatform.ValueStringPointer(),
+		},
+	}
+
+	var remediationInfo, alertInfo *string
+	if plan.ParentRuleId.IsNull() {
+		alertInfo, diags = convertAlertInfoToAPIFormat(ctx, plan.AlertInfo, false)
+		if diags.HasError() {
+			return nil, diags
+		}
+
+		remediationInfo, diags = convertRemediationInfoToAPIFormat(ctx, plan.RemediationInfo, false)
+		if diags.HasError() {
+			return nil, diags
+		}
+	} else {
+		alertInfo, diags = convertAlertInfoToAPIFormat(ctx, plan.AlertInfo, true)
+		if diags.HasError() {
+			return nil, diags
+		}
+
+		remediationInfo, diags = convertRemediationInfoToAPIFormat(ctx, plan.RemediationInfo, true)
+		if diags.HasError() {
+			return nil, diags
+		}
+	}
+
+	if remediationInfo == nil {
+		if remediationInfo != nil {
+			body.RuleLogicList[0].RemediationInfo = remediationInfo
+		} else {
+			body.RuleLogicList[0].RemediationInfo = utils.Addr("") // Left off here.
+		}
+	}
+
+	if alertInfo != nil {
+		body.AlertInfo = *alertInfo
+	}
+
+	body.RuleLogicList = []*models.ApimodelsRuleLogic{
+		{
 			Platform:        plan.CloudPlatform.ValueStringPointer(),
-			RemediationInfo: plan.RemediationInfo.ValueStringPointer(),
+			RemediationInfo: remediationInfo,
 		},
 	}
 
@@ -809,15 +866,6 @@ func (r *cloudPostureCustomRuleResource) updateCloudPolicyRule(ctx context.Conte
 
 	if !plan.Severity.IsNull() {
 		body.Severity = int64(plan.Severity.ValueInt32())
-	}
-
-	alertInfo, diags := convertAlertInfoToAPIFormat(plan.AlertInfo)
-	if diags.HasError() {
-		return nil, diags
-	}
-
-	if alertInfo != nil {
-		body.AlertInfo = *alertInfo
 	}
 
 	params := cloud_policies.UpdateRuleParams{
@@ -917,34 +965,64 @@ func (r *cloudPostureCustomRuleResource) deleteCloudPolicyRule(ctx context.Conte
 	return diags
 }
 
-func convertAlertInfoToAPIFormat(alertInfo basetypes.ListValue) (*string, diag.Diagnostics) {
+func convertAlertInfoToAPIFormat(ctx context.Context, alertInfo basetypes.ListValue, includeNumbering bool) (*string, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	var alertInfoStrings []string
+	var convertedAlertInfo string
 
-	alertInfoMap := make(map[string]string)
-	for i, v := range alertInfo.Elements() {
-		stringValue, ok := v.(types.String)
-		if !ok {
-			diags.AddError(
-				"Error converting AlertInfo",
-				fmt.Sprintf("Failed to convert element %d to string", i),
-			)
-			return nil, diags
-		}
-		alertInfoMap[fmt.Sprintf("%d", i+1)] = stringValue.ValueString()
-	}
-
-	jsonData, err := json.Marshal(alertInfoMap)
-	if err != nil {
-		diags.AddError(
-			"Error marshalling AlertInfo",
-			fmt.Sprintf("Failed to marshal AlertInfo to JSON: %s", err),
-		)
+	if alertInfo.IsNull() || alertInfo.IsUnknown() {
 		return nil, diags
 	}
 
-	convertedJsonData := string(jsonData)
+	if includeNumbering {
+		for i, elem := range alertInfo.Elements() {
+			str, ok := elem.(types.String)
+			if !ok {
+				diags.AddError(
+					"Error converting AlertInfo",
+					fmt.Sprintf("Failed to convert element %d to string", i),
+				)
+				return nil, diags
+			}
+			alertInfoStrings = append(alertInfoStrings, fmt.Sprintf("%d. %s", i+1, str.ValueString()))
+		}
 
-	return &convertedJsonData, diags
+		convertedAlertInfo = strings.Join(alertInfoStrings, "|\n")
+	} else {
+		diags = alertInfo.ElementsAs(ctx, &alertInfoStrings, false)
+		convertedAlertInfo = strings.Join(alertInfoStrings, "|")
+	}
+	return &convertedAlertInfo, diags
+}
+
+func convertRemediationInfoToAPIFormat(ctx context.Context, info basetypes.ListValue, includeNumbering bool) (*string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var infoStrings []string
+	var convertedInfo string
+
+	if info.IsNull() || info.IsUnknown() {
+		return nil, diags
+	}
+
+	if includeNumbering {
+		for i, elem := range info.Elements() {
+			str, ok := elem.(types.String)
+			if !ok {
+				diags.AddError(
+					"Error converting RemediationInfo",
+					fmt.Sprintf("Failed to convert element %d to string", i),
+				)
+				return nil, diags
+			}
+			infoStrings = append(infoStrings, fmt.Sprintf("Step %d. %s", i+1, str.ValueString()))
+		}
+		convertedInfo = strings.Join(infoStrings, "|\n")
+	} else {
+		diags = info.ElementsAs(ctx, &infoStrings, false)
+		convertedInfo = strings.Join(infoStrings, "|")
+	}
+
+	return &convertedInfo, diags
 }
 
 func convertControlsToTerraformState(ruleControls []*models.ApimodelsControl) (basetypes.SetValue, diag.Diagnostics) {
