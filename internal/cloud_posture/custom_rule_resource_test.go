@@ -115,12 +115,12 @@ func TestCloudPostureCustomRuleResource(t *testing.T) {
 	// steps = append(steps, generateRuleLogicTests(awsCopyConfig, "AWS_Rego")...)
 	// steps = append(steps, generateRuleLogicTests(azureCopyConfig, "Azure_Rego")...)
 	// steps = append(steps, generateRuleLogicTests(gcpCopyConfig, "GCP_Rego")...)
-	// steps = append(steps, generateMinimalRuleCopyTests(awsCopyConfig, "AWS_Min")...)
-	// steps = append(steps, generateMinimalRuleCopyTests(azureCopyConfig, "Azure_Min")...)
-	// steps = append(steps, generateMinimalRuleCopyTests(gcpCopyConfig, "GCP_Min")...)
+	steps = append(steps, generateMinimalRuleCopyTests(awsCopyConfig, "AWS_Min")...)
+	steps = append(steps, generateMinimalRuleCopyTests(azureCopyConfig, "Azure_Min")...)
+	steps = append(steps, generateMinimalRuleCopyTests(gcpCopyConfig, "GCP_Min")...)
 	steps = append(steps, generateMinimalRuleLogicTests(awsCopyConfig, "AWS_Min_Rego")...)
-	// steps = append(steps, generateMinimalRuleLogicTests(azureCopyConfig, "Azure_Min_Rego")...)
-	// steps = append(steps, generateMinimalRuleLogicTests(gcpCopyConfig, "GCP_Min_Rego")...)
+	steps = append(steps, generateMinimalRuleLogicTests(azureCopyConfig, "Azure_Min_Rego")...)
+	steps = append(steps, generateMinimalRuleLogicTests(gcpCopyConfig, "GCP_Min_Rego")...)
 	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		PreCheck:                 func() { acctest.PreCheck(t) },

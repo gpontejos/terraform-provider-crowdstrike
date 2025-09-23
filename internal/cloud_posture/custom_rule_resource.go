@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -233,7 +232,7 @@ func (r *cloudPostureCustomRuleResource) Schema(
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "Information about how to remediate issues detected by this rule.",
-				Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{types.StringValue("")})),
+				// Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{types.StringValue("")})),
 			},
 			"resource_type": schema.StringAttribute{
 				Required:    true,
@@ -829,6 +828,8 @@ func (r *cloudPostureCustomRuleResource) updateCloudPolicyRule(ctx context.Conte
 		if diags.HasError() {
 			return nil, diags
 		}
+
+		body.RuleLogicList[0].Logic = plan.Logic.ValueString()
 	} else {
 		alertInfo, diags = convertAlertInfoToAPIFormat(ctx, plan.AlertInfo, true)
 		if diags.HasError() {
@@ -841,27 +842,12 @@ func (r *cloudPostureCustomRuleResource) updateCloudPolicyRule(ctx context.Conte
 		}
 	}
 
-	if remediationInfo == nil {
-		if remediationInfo != nil {
-			body.RuleLogicList[0].RemediationInfo = remediationInfo
-		} else {
-			body.RuleLogicList[0].RemediationInfo = utils.Addr("") // Left off here.
-		}
+	if remediationInfo != nil {
+		body.RuleLogicList[0].RemediationInfo = remediationInfo
 	}
 
 	if alertInfo != nil {
 		body.AlertInfo = *alertInfo
-	}
-
-	body.RuleLogicList = []*models.ApimodelsRuleLogic{
-		{
-			Platform:        plan.CloudPlatform.ValueStringPointer(),
-			RemediationInfo: remediationInfo,
-		},
-	}
-
-	if !plan.Logic.IsNull() {
-		body.RuleLogicList[0].Logic = plan.Logic.ValueString()
 	}
 
 	if !plan.Severity.IsNull() {
