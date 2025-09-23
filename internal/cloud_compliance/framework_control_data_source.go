@@ -138,7 +138,7 @@ func (r *cloudComplianceFrameworkControlDataSource) Schema(
 						},
 						"requirement": schema.StringAttribute{
 							Optional:    true,
-							Description: "The compliance framework rule code.",
+							Description: "The compliance framework requirement.",
 						},
 						"benchmark": schema.StringAttribute{
 							Optional:    true,
@@ -154,7 +154,7 @@ func (r *cloudComplianceFrameworkControlDataSource) Schema(
 						},
 						"uuid": schema.StringAttribute{
 							Required:    true,
-							Description: "The uuid of the control.",
+							Description: "The uuid of the compliance control.",
 						},
 					},
 				},
@@ -362,142 +362,3 @@ func (r *cloudComplianceFrameworkControlDataSource) describeControls(ctx context
 
 	return controls, diags
 }
-
-// func (r *cloudComplianceFrameworkControlDataSource) getFrameworkUUID(ctx context.Context, name string) (string, diag.Diagnostics) {
-// 	var diags diag.Diagnostics
-// 	var frameworkUUID string
-
-// 	filter := fmt.Sprintf("compliance_framework_name:'%s'", "AWS Well-Architected Framework (Section 2 - Security) 11.2024")
-
-// 	paramsFramework := cloud_policies.QueryComplianceFrameworksParams{
-// 		Context: ctx,
-// 		Filter:  &filter,
-// 	}
-
-// 	resp, err := r.client.CloudPolicies.QueryComplianceFrameworks(&paramsFramework)
-// 	if err != nil {
-// 		if notFound, ok := err.(*cloud_policies.QueryComplianceFrameworksBadRequest); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework UUID",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (400): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkUUID, diags
-// 		}
-
-// 		if notFound, ok := err.(*cloud_policies.QueryComplianceFrameworksInternalServerError); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework UUID",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (500): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkUUID, diags
-// 		}
-
-// 		diags.AddError(
-// 			"Error Retrieving Framework UUID",
-// 			fmt.Sprintf("Failed to retrieve framework UUID for %s: %+v", name, err),
-// 		)
-
-// 		return frameworkUUID, diags
-// 	}
-
-// 	payload := resp.GetPayload()
-// 	if err = falcon.AssertNoError(payload.Errors); err != nil {
-// 		diags.AddError(
-// 			"Error Retrieving Framework UUID",
-// 			fmt.Sprintf("Failed to retrieve framework UUID for %s: %s", name, err.Error()),
-// 		)
-// 		return frameworkUUID, diags
-// 	}
-
-// 	if len(payload.Resources) != 1 {
-// 		diags.AddError(
-// 			"Unique Framework Not Found",
-// 			fmt.Sprintf("Failed to retrieve framework UUID for %s. %d found", name, len(payload.Resources)),
-// 		)
-// 		return frameworkUUID, diags
-// 	}
-
-// 	frameworkUUID = payload.Resources[0]
-
-// 	return frameworkUUID, diags
-// }
-
-// func (r *cloudComplianceFrameworkControlDataSource) getFrameworkControls(ctx context.Context, uuid string) (models.ComplianceFrameworkSummary, diag.Diagnostics) {
-// 	var frameworkControls models.ComplianceFrameworkSummary
-// 	var diags diag.Diagnostics
-
-// 	params := cloud_security_compliance.CloudComplianceFrameworkPostureSummariesParams{
-// 		Context: ctx,
-// 		Ids:     []string{uuid},
-// 	}
-
-// 	resp, err := r.client.CloudSecurityCompliance.CloudComplianceFrameworkPostureSummaries(&params)
-// 	if err != nil {
-// 		if notFound, ok := err.(*cloud_security_compliance.CloudComplianceFrameworkPostureSummariesBadRequest); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework Controls",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (400): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkControls, diags
-// 		}
-
-// 		if notFound, ok := err.(*cloud_security_compliance.CloudComplianceFrameworkPostureSummariesForbidden); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework Controls",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (403): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkControls, diags
-// 		}
-
-// 		if notFound, ok := err.(*cloud_security_compliance.CloudComplianceFrameworkPostureSummariesRequestTimeout); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework Controls",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (408): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkControls, diags
-// 		}
-
-// 		if notFound, ok := err.(*cloud_security_compliance.CloudComplianceFrameworkPostureSummariesTooManyRequests); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework Controls",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (429): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkControls, diags
-// 		}
-
-// 		if notFound, ok := err.(*cloud_security_compliance.CloudComplianceFrameworkPostureSummariesInternalServerError); ok {
-// 			diags.AddError(
-// 				"Error Retrieving Framework Controls",
-// 				fmt.Sprintf("Failed to retrieve framework UUID for (500): %+v", *notFound.Payload.Errors[0].Message),
-// 			)
-// 			return frameworkControls, diags
-// 		}
-
-// 		diags.AddError(
-// 			"Error Retrieving Framework Controls",
-// 			fmt.Sprintf("Failed to retrieve controls for framework %s: %+v", uuid, err),
-// 		)
-
-// 		return frameworkControls, diags
-// 	}
-
-// 	payload := resp.GetPayload()
-
-// 	if err = falcon.AssertNoError(payload.Errors); err != nil {
-// 		diags.AddError(
-// 			"Error Retrieving Framework Controls",
-// 			fmt.Sprintf("Failed to retrieve controls for framework %s: %s", uuid, err.Error()),
-// 		)
-// 		return frameworkControls, diags
-// 	}
-
-// 	if len(payload.Resources) != 1 {
-// 		diags.AddError(
-// 			"Error Retrieving Framework Controls",
-// 			fmt.Sprintf("Failed to retrieve framework controls for %s. %d frameworks found.", uuid, len(payload.Resources)),
-// 		)
-// 		return frameworkControls, diags
-// 	}
-
-// 	return frameworkControls, diags
-// }

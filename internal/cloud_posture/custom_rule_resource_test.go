@@ -109,12 +109,12 @@ var gcpCopyConfig = ruleCustomConfig{
 func TestCloudPostureCustomRuleResource(t *testing.T) {
 	var steps []resource.TestStep
 
-	// steps = append(steps, generateRuleCopyTests(awsCopyConfig, "AWS")...)
-	// steps = append(steps, generateRuleCopyTests(azureCopyConfig, "Azure")...)
-	// steps = append(steps, generateRuleCopyTests(gcpCopyConfig, "GCP")...)
-	// steps = append(steps, generateRuleLogicTests(awsCopyConfig, "AWS_Rego")...)
-	// steps = append(steps, generateRuleLogicTests(azureCopyConfig, "Azure_Rego")...)
-	// steps = append(steps, generateRuleLogicTests(gcpCopyConfig, "GCP_Rego")...)
+	steps = append(steps, generateRuleCopyTests(awsCopyConfig, "AWS")...)
+	steps = append(steps, generateRuleCopyTests(azureCopyConfig, "Azure")...)
+	steps = append(steps, generateRuleCopyTests(gcpCopyConfig, "GCP")...)
+	steps = append(steps, generateRuleLogicTests(awsCopyConfig, "AWS_Rego")...)
+	steps = append(steps, generateRuleLogicTests(azureCopyConfig, "Azure_Rego")...)
+	steps = append(steps, generateRuleLogicTests(gcpCopyConfig, "GCP_Rego")...)
 	steps = append(steps, generateMinimalRuleCopyTests(awsCopyConfig, "AWS_Min")...)
 	steps = append(steps, generateMinimalRuleCopyTests(azureCopyConfig, "Azure_Min")...)
 	steps = append(steps, generateMinimalRuleCopyTests(gcpCopyConfig, "GCP_Min")...)

@@ -134,7 +134,6 @@ func (r *cloudPostureCustomRuleResource) Schema(
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "A list of the alert logic and detection criteria for rule violations. Parent value will be used when parent_rule_id is defined.",
-				// Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
 			},
 			"controls": schema.SetNestedAttribute{
 				Optional:    true,
@@ -173,7 +172,6 @@ func (r *cloudPostureCustomRuleResource) Schema(
 				Computed:    true,
 				Description: "Specific attack types associated with the rule. Note: If 'parent_rule_id' is specified, these attack types will be inherited from the parent rule, and any values provided here will be ignored.",
 				ElementType: types.StringType,
-				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{types.StringValue("")})),
 			},
 			"logic": schema.StringAttribute{
 				Optional:    true,
@@ -232,7 +230,6 @@ func (r *cloudPostureCustomRuleResource) Schema(
 				Computed:    true,
 				ElementType: types.StringType,
 				Description: "Information about how to remediate issues detected by this rule.",
-				// Default:     listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{types.StringValue("")})),
 			},
 			"resource_type": schema.StringAttribute{
 				Required:    true,
@@ -252,7 +249,7 @@ func (r *cloudPostureCustomRuleResource) Schema(
 			},
 			"subdomain": schema.StringAttribute{
 				Required:    true,
-				Description: "Subdomain for the policy rule. Valid values are 'IOM' (Indicators of Misconfiguration) or 'IaC' (Indicators of Attack). IOM is only supported at this time.",
+				Description: "Subdomain for the policy rule. Valid values are 'IOM' (Indicators of Misconfiguration) or 'IaC' (Infrastructure as Code). IOM is only supported at this time.",
 				Validators: []validator.String{
 					stringvalidator.OneOf(
 						"IOM",
@@ -416,30 +413,13 @@ func (r *cloudPostureCustomRuleResource) Update(
 		return
 	}
 
-	// plan.AlertInfo = unmarshallAlertInfoToTerraformState(*rule.AlertInfo)
-
-	// if rule.AlertInfo != nil {
-	plan.AlertInfo = convertAlertRemediationInfoToTerraformState(rule.AlertInfo)
-	// } else {
-	// 	plan.AlertInfo = types.ListNull(types.StringType)
-	// }
-
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
-		return
-	}
-
 	plan.UUID = types.StringPointerValue(rule.UUID)
 	plan.Name = types.StringPointerValue(rule.Name)
 	plan.Description = types.StringPointerValue(rule.Description)
 	plan.CloudPlatform = types.StringPointerValue(rule.RuleLogicList[0].Platform)
 	plan.CloudProvider = types.StringPointerValue(rule.Provider)
-
-	// if rule.Remediation != nil {
+	plan.AlertInfo = convertAlertRemediationInfoToTerraformState(rule.AlertInfo)
 	plan.RemediationInfo = convertAlertRemediationInfoToTerraformState(rule.Remediation)
-	// }
-
-	// plan.Severity = types.Int32Value(int32(*rule.Severity))
 
 	if rule.Severity != nil {
 		plan.Severity = types.Int32Value(int32(*rule.Severity))
@@ -573,53 +553,6 @@ func (r *cloudPostureCustomRuleResource) ValidateConfig(
 	}
 }
 
-func (r *cloudPostureCustomRuleResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	// Only modify during create or update, not delete
-	if req.Plan.Raw.IsNull() {
-		return
-	}
-
-	var plan, config *cloudPostureCustomRuleResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if !plan.ParentRuleId.IsNull() && !plan.ParentRuleId.IsUnknown() {
-		parentRule, diags := r.getCloudPolicyRule(ctx, plan.ParentRuleId.ValueString())
-		if diags.HasError() {
-			resp.Diagnostics.Append(diags...)
-		}
-
-		if len(plan.RemediationInfo.Elements()) == 0 {
-			plan.RemediationInfo = convertAlertRemediationInfoToTerraformState(parentRule.Remediation)
-		}
-
-		if len(parentRule.AttackTypes) > 0 {
-			// if len(parentRule.AttackTypes) > 0 {
-			plan.AttackTypes = types.SetValueMust(types.StringType, []attr.Value{})
-			for _, attackType := range parentRule.AttackTypes {
-				plan.AttackTypes, diags = types.SetValue(types.StringType, append(plan.AttackTypes.Elements(), types.StringValue(attackType)))
-				if diags.HasError() {
-					resp.Diagnostics.Append(diags...)
-					return
-				}
-			}
-		}
-
-		if config.AlertInfo.IsNull() {
-			plan.AlertInfo = convertAlertRemediationInfoToTerraformState(parentRule.AlertInfo)
-		}
-	}
-
-	resp.Plan.Set(ctx, &plan)
-}
-
 func (r *cloudPostureCustomRuleResource) createCloudPolicyRule(ctx context.Context, plan *cloudPostureCustomRuleResourceModel) (*models.ApimodelsRule, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -631,8 +564,7 @@ func (r *cloudPostureCustomRuleResource) createCloudPolicyRule(ctx context.Conte
 		ResourceType: plan.ResourceType.ValueStringPointer(),
 		Domain:       plan.Domain.ValueStringPointer(),
 		Subdomain:    plan.Subdomain.ValueStringPointer(),
-		// RemediationInfo: plan.RemediationInfo.ValueStringPointer(),
-		Severity: plan.Severity.ValueInt32Pointer(),
+		Severity:     plan.Severity.ValueInt32Pointer(),
 	}
 
 	if plan.ParentRuleId.IsNull() {
