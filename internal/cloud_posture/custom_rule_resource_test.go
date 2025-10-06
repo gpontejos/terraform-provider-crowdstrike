@@ -1,8 +1,8 @@
 package cloudposture_test
 
-// Check empty fields.
-// Check nil
-// Check from defined to empty or nil. In-place updates.
+// // Check empty fields.
+// // Check nil
+// // Check from defined to empty or nil. In-place updates.
 
 import (
 	"fmt"

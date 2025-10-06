@@ -12,6 +12,7 @@ import (
 	contentupdatepolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/content_update_policy"
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/fcs"
 	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/fim"
+	"github.com/crowdstrike/terraform-provider-crowdstrike/internal/functions"
 	hostgroups "github.com/crowdstrike/terraform-provider-crowdstrike/internal/host_groups"
 	preventionpolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/prevention_policy"
 	sensorupdatepolicy "github.com/crowdstrike/terraform-provider-crowdstrike/internal/sensor_update_policy"
@@ -256,6 +257,7 @@ func (p *CrowdStrikeProvider) Resources(ctx context.Context) []func() resource.R
 		contentupdatepolicy.NewContentUpdatePolicyPrecedenceResource,
 		sensorvisibilityexclusion.NewSensorVisibilityExclusionResource,
 		cloudposture.NewCloudPostureCustomRuleResource,
+		cloudposture.NewCrowdstrikeCloudPostureRuleOverrideResource,
 	}
 }
 
@@ -270,7 +272,9 @@ func (p *CrowdStrikeProvider) DataSources(ctx context.Context) []func() datasour
 }
 
 func (p *CrowdStrikeProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{}
+	return []func() function.Function{
+		functions.NewGenerateCRN,
+	}
 }
 
 func New(version string) func() provider.Provider {

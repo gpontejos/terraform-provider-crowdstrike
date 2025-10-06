@@ -715,13 +715,13 @@ func (r *cloudPostureCustomRuleResource) updateCloudPolicyRule(ctx context.Conte
 		}
 	}
 
-	// if remediationInfo != nil {
-	body.RuleLogicList[0].RemediationInfo = remediationInfo
-	// }
+	if remediationInfo != "" {
+		body.RuleLogicList[0].RemediationInfo = remediationInfo
+	}
 
-	// if alertInfo != nil {
-	body.AlertInfo = alertInfo
-	// }
+	if alertInfo != "" {
+		body.AlertInfo = alertInfo
+	}
 
 	params := cloud_policies.UpdateRuleParams{
 		Context: ctx,
