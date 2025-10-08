@@ -31,7 +31,6 @@ var (
 	_ resource.ResourceWithConfigure      = &CrowdstrikeCloudPostureRuleOverrideResource{}
 	_ resource.ResourceWithImportState    = &CrowdstrikeCloudPostureRuleOverrideResource{}
 	_ resource.ResourceWithValidateConfig = &CrowdstrikeCloudPostureRuleOverrideResource{}
-	// _ resource.ResourceWithConfigValidators = &CrowdstrikeCloudPostureRuleOverrideResource{}
 )
 
 func NewCrowdstrikeCloudPostureRuleOverrideResource() resource.Resource {
@@ -152,6 +151,9 @@ func (r *CrowdstrikeCloudPostureRuleOverrideResource) Schema(
 				Computed:    true,
 				Description: "The CrowdStrike Resource Name (CRN) of the resource. This is the globally unique identifier for a given CrowdStrike CSPM resource",
 				Default:     stringdefault.StaticString(""),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"override_type": schema.StringAttribute{
 				Required:            true,
@@ -223,6 +225,10 @@ func (r *CrowdstrikeCloudPostureRuleOverrideResource) Read(
 	getOverride, diags := r.getRuleOverride(ctx, state.ID.ValueString())
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
+	}
+
+	if getOverride == nil {
+		return
 	}
 
 	resp.Diagnostics.Append(state.wrap(getOverride)...)
@@ -350,10 +356,10 @@ func (r *CrowdstrikeCloudPostureRuleOverrideResource) getRuleOverride(ctx contex
 	}
 
 	if resp == nil || resp.Payload == nil || len(resp.Payload.Resources) == 0 {
-		diags.AddError(
-			"Error Retrieving Rule Override",
-			"Failed to retrieve rule override: Payload is empty.",
-		)
+		// diags.AddError(
+		// 	"Error Retrieving Rule Override",
+		// 	"Failed to retrieve rule override: Payload is empty.",
+		// )
 		return nil, diags
 	}
 

@@ -503,7 +503,7 @@ func (r *cloudPostureRulesDataSource) getRules(
 			}
 
 			if resource.RuleLogicList != nil {
-				rule.RemediationInfo = convertAlertRemediationInfoToTerraformState(&resource.RuleLogicList[0].RemediationInfo)
+				rule.RemediationInfo = convertAlertRemediationInfoToTerraformState(resource.RuleLogicList[0].RemediationInfo)
 			}
 
 			if resource.AlertInfo != nil {

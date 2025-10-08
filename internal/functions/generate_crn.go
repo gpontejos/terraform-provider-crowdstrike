@@ -46,7 +46,8 @@ func (f *generateCRN) Definition(_ context.Context, req function.DefinitionReque
 			function.StringParameter{
 				Name: "resource_id",
 				MarkdownDescription: "The unique identifier assigned to the specific cloud resource within its environment. " +
-					"A full CRN for a resource can be found in the Falcon console within Cloud Security under Assets -> Cloud Inventory. ",
+					"The resource ID for an individual Cloud Asset can be found in the Falcon console within Cloud Security under Assets -> Cloud Inventory. " +
+					"Depending on the underlying API, this value could be the full ARN or the unique resource Id within the cloud provider. ",
 			},
 		},
 		Return: function.StringReturn{},

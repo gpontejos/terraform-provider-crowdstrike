@@ -36,41 +36,41 @@ var (
 		overrideType: "suppression",
 	}
 
-	// disableConfig = testRuleOverrideConfig{
-	// 	ruleName: "Authentication via PowerShell/CLI",
-	// 	expiresAt: []string{
-	// 		"2028-10-06T21:33:11.929Z",
-	// 		"2027-10-06T21:33:11.929Z",
-	// 	},
-	// 	cloudProvider: "Azure",
-	// 	overrideType:  "disable",
-	// }
+	disableConfig = testRuleOverrideConfig{
+		ruleName: "AKS Cluster RBAC Disabled",
+		expiresAt: []string{
+			"2028-10-06T21:33:11.929Z",
+			"2027-10-06T21:33:11.929Z",
+		},
+		cloudProvider: "Azure",
+		overrideType:  "disable",
+	}
 )
 
 func TestCloudPostureRuleOverrideResource(t *testing.T) {
 	var steps []resource.TestStep
 
 	for i := range 2 {
-		resourceName := "crowdstrike_cloud_posture_rule_override." + suppressionConfig.overrideType
+		resourceName := "crowdstrike_cloud_posture_rule_override." + suppressionConfig.overrideType + "_override"
 		resourceStep := resource.TestStep{
 			Config: fmt.Sprintf(`
-data "crowdstrike_cloud_posture_rules" "all" {
-  cloud_provider = "%[1]s"
-  rule_name = "%[2]s"
-}
+	data "crowdstrike_cloud_posture_rules" "%[3]s" {
+	  cloud_provider = "%[1]s"
+	  rule_name = "%[2]s"
+	}
 
-resource "crowdstrike_cloud_posture_rule_override" "%[3]s" {
-    rule_id = data.crowdstrike_cloud_posture_rules.all.rules.*.id[0]
-    override_type = "%[3]s"
-    crn = "%[4]s"
-    expires_at = "%[5]s"
-    depends_on = [ data.crowdstrike_cloud_posture_rules.all ]
-}
-`, suppressionConfig.cloudProvider, suppressionConfig.ruleName, suppressionConfig.overrideType, suppressionConfig.crn[i],
+	resource "crowdstrike_cloud_posture_rule_override" "%[3]s_override" {
+	    rule_id = data.crowdstrike_cloud_posture_rules.%[3]s.rules.*.id[0]
+	    override_type = "%[3]s"
+	    crn = "%[4]s"
+	    expires_at = "%[5]s"
+	    depends_on = [ data.crowdstrike_cloud_posture_rules.%[3]s ]
+	}
+	`, suppressionConfig.cloudProvider, suppressionConfig.ruleName, suppressionConfig.overrideType, suppressionConfig.crn[0],
 				suppressionConfig.expiresAt[i]),
 			Check: resource.ComposeAggregateTestCheckFunc(
 				resource.TestCheckResourceAttr(resourceName, "override_type", suppressionConfig.overrideType),
-				resource.TestCheckResourceAttr(resourceName, "crn", suppressionConfig.crn[i]),
+				resource.TestCheckResourceAttr(resourceName, "crn", suppressionConfig.crn[0]),
 				resource.TestCheckResourceAttr(resourceName, "expires_at", suppressionConfig.expiresAt[i]),
 				resource.TestCheckResourceAttrSet(resourceName, "rule_id"),
 				resource.TestCheckResourceAttrSet(resourceName, "id"),
@@ -93,10 +93,51 @@ resource "crowdstrike_cloud_posture_rule_override" "%[3]s" {
 
 		steps = append(steps, resourceStep)
 		steps = append(steps, importTestStep)
-
 	}
 
-	steps = append(steps, generateRuleCopyTests(awsCopyConfig, "AWS")...)
+	for i := range 2 {
+		resourceName := "crowdstrike_cloud_posture_rule_override." + disableConfig.overrideType + "_override"
+		resourceStep := resource.TestStep{
+			Config: fmt.Sprintf(`
+	data "crowdstrike_cloud_posture_rules" "%[3]s" {
+	  cloud_provider = "%[1]s"
+	  rule_name = "%[2]s"
+	}
+
+	resource "crowdstrike_cloud_posture_rule_override" "%[3]s_override" {
+	    rule_id = data.crowdstrike_cloud_posture_rules.%[3]s.rules.*.id[0]
+	    override_type = "%[3]s"
+	    expires_at = "%[4]s"
+	    depends_on = [ data.crowdstrike_cloud_posture_rules.%[3]s ]
+	}
+	`, disableConfig.cloudProvider, disableConfig.ruleName, disableConfig.overrideType,
+				disableConfig.expiresAt[i]),
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr(resourceName, "override_type", disableConfig.overrideType),
+				resource.TestCheckResourceAttr(resourceName, "expires_at", disableConfig.expiresAt[i]),
+				resource.TestCheckResourceAttrSet(resourceName, "rule_id"),
+				resource.TestCheckResourceAttrSet(resourceName, "id"),
+			),
+		}
+
+		importTestStep := resource.TestStep{
+			ResourceName:                         resourceName,
+			ImportState:                          true,
+			ImportStateVerify:                    true,
+			ImportStateVerifyIdentifierAttribute: "id",
+			ImportStateIdFunc: func(s *terraform.State) (string, error) {
+				rs, ok := s.RootModule().Resources[resourceName]
+				if !ok {
+					return "", fmt.Errorf("Resource not found: %s", resourceName)
+				}
+				return rs.Primary.Attributes["id"], nil
+			},
+		}
+
+		steps = append(steps, resourceStep)
+		steps = append(steps, importTestStep)
+	}
+
 	resource.ParallelTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		PreCheck:                 func() { acctest.PreCheck(t) },
